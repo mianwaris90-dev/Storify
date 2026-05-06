@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- USERS ---
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && incoming().uid == request.auth.uid
+        && incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100
+        && incoming().email is string && incoming().email == request.auth.token.email
+        && incoming().storeName is string && incoming().storeName.size() > 0 && incoming().storeName.size() <= 100;
+      allow update: if isOwner(userId)
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'storeName'])
+          && incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100
+          && incoming().storeName is string && incoming().storeName.size() > 0 && incoming().storeName.size() <= 100
+        );
+    }
+
+    // --- ORDERS ---
+    match /orders/{orderId} {
+      // List/Get: Only if the user is the shopkeeper for this order
+      allow list: if isSignedIn() && resource.data.shopkeeperId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.shopkeeperId == request.auth.uid;
+
+      // Create: Valid user, pending status, correct shopkeeperId
+      allow create: if isSignedIn()
+        && incoming().shopkeeperId == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().customerName is string && incoming().customerName.size() > 0 && incoming().customerName.size() <= 100
+        && incoming().amount is number && incoming().amount >= 0
+        && (incoming().notes == null || (incoming().notes is string && incoming().notes.size() <= 500))
+        && incoming().createdAt == request.time;
+
+      // Update: Only shopkeeper, only updating status from pending to completed/cancelled
+      allow update: if isSignedIn() && existing().shopkeeperId == request.auth.uid
+        && incoming().shopkeeperId == existing().shopkeeperId
+        && (
+          // Action: Update Status
+          (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+           && incoming().status in ['completed', 'cancelled']
+           && existing().status == 'pending'
+           && incoming().updatedAt == request.time)
+        );
+      
+      allow delete: if false; // Orders should not be deleted for record keeping, or maybe cancelled?
+    }
+
+    // --- MESSAGES ---
+    match /messages/{messageId} {
+      // Users can only read their own messages
+      allow list: if isSignedIn() && resource.data.shopkeeperId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.shopkeeperId == request.auth.uid;
+      
+      // Messages are read-only from the client (Admin-only creation)
+      allow write: if false;
+    }
+  }
+}

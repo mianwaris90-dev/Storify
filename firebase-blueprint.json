@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Shopkeeper profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "storeName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "email", "storeName"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer order details tracked by shopkeeper",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shopkeeperId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["shopkeeperId", "customerName", "amount", "status", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Inbox message for shopkeeper",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shopkeeperId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["shopkeeperId", "title", "body", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile document"
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Collection of all orders"
+    },
+    "messages/{messageId}": {
+      "schema": "Message",
+      "description": "System messages for users"
+    }
+  }
+}

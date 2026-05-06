@@ -1,0 +1,6 @@
+{
+  "name": "Cash State Order",
+  "description": "A dedicated order-tracking dashboard for shopkeepers to manage customer orders, track revenue, and monitor business performance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
